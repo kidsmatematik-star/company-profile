@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeswecan - Company Profile CMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-storage-compat.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --text-color: #1f2937;
+            --bg-color: #f3f4f6;
+            --font-family: 'Inter', sans-serif;
+        }
+        body {
+            font-family: var(--font-family);
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top right, #e0e7ff, transparent), radial-gradient(circle at bottom left, #dbeafe, transparent);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+        body.dark-mode {
+            --text-color: #f3f4f6;
+            --bg-color: #111827;
+            background-image: radial-gradient(circle at top right, #1f2937, transparent), radial-gradient(circle at bottom left, #0f172a, transparent);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        body.dark-mode .glass {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        body.dark-mode .glass-nav {
+            background: rgba(17, 24, 39, 0.85);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .content-area {
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for mobile nav */
+        }
+        @media (min-width: 1024px) {
+            .content-area {
+                margin-left: 16rem; /* 64 * 0.25rem = 16rem */
+                padding-bottom: 0;
+            }
+        }
+        
+        /* Floating WA */
+        .floating-wa {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background-color: #25D366;
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: transform 0.3s;
+        }
+        .floating-wa:hover { transform: scale(1.1); }
+        @media (min-width: 1024px) {
+            .floating-wa { bottom: 30px; right: 30px; }
+        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
+        .section-padding { padding: 4rem 1rem; }
+        @media (min-width: 1024px) { .section-padding { padding: 6rem 2rem; } }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Container -->
+    <nav id="mainNav" class="glass-nav fixed w-full lg:w-64 lg:h-screen bottom-0 lg:top-0 left-0 z-50 flex lg:flex-col justify-around lg:justify-start lg:py-8 px-2 lg:px-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:shadow-xl transition-all duration-300">
+        <!-- Logo Desktop -->
+        <div class="hidden lg:flex flex-col items-center mb-10">
+            <h1 id="navLogoText" class="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">Company</h1>
+            <span class="text-xs text-gray-500" id="userRoleBadge">Guest Mode</span>
+        </div>
+
+        <!-- Menu Links -->
+        <div class="flex lg:flex-col w-full justify-around lg:justify-start space-y-0 lg:space-y-3" id="navLinksContainer">
+            <!-- Dinamis via JS -->
+        </div>
+
+        <!-- Theme Toggle & Logout -->
+        <div class="hidden lg:flex flex-col mt-auto pt-6 border-t border-gray-200 dark:border-gray-700 w-full space-y-3">
+            <button onclick="toggleTheme()" class="flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-600 transition-colors w-full p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <i class="fas fa-moon w-6 text-center"></i> <span class="ml-2 font-medium">Ubah Tema</span>
+            </button>
+            <button id="authButton" onclick="showLoginModal()" class="flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-600 transition-colors w-full p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <i class="fas fa-sign-in-alt w-6 text-center"></i> <span class="ml-2 font-medium" id="authButtonText">Login Portal</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Header Mobile (Only visible on small screens) -->
+    <header class="lg:hidden glass fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center shadow-sm">
+        <h1 id="mobileLogoText" class="text-xl font-bold font-bold text-gray-800 dark:text-white">Company</h1>
+        <div class="flex space-x-3">
+            <button onclick="toggleTheme()" class="text-gray-600 dark:text-gray-300"><i class="fas fa-moon text-xl"></i></button>
+            <button onclick="document.getElementById('authButton').click()" class="text-gray-600 dark:text-gray-300"><i class="fas fa-user-circle text-xl"></i></button>
+        </div>
+    </header>
+
+    <main class="content-area w-full pt-16 lg:pt-0 pb-20 lg:pb-0" id="mainContent">
+        <!-- Render Area Dinamis -->
+        <div id="dynamicContent" class="w-full h-full"></div>
+    </main>
+
+    <!-- Floating WA -->
+    <a href="https://wa.me/628000000000" id="floatingWA" class="floating-wa" target="_blank" style="display: none;">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- Modal Login -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="glass rounded-2xl w-full max-w-md p-8 relative">
+            <button onclick="closeModal('loginModal')" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:text-gray-300"><i class="fas fa-times text-xl"></i></button>
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Portal Akses</h2>
+            
+            <div class="flex mb-6 border-b border-gray-300 dark:border-gray-600">
+                <button onclick="switchLoginTab('admin')" id="tabAdmin" class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-600">Admin</button>
+                <button onclick="switchLoginTab('client')" id="tabClient" class="flex-1 py-2 text-center font-semibold text-gray-500">Klien / Pelamar</button>
+            </div>
+
+            <!-- Form Admin (Firebase Auth) -->
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Email Admin</label>
+                    <input type="email" id="adminEmail" required class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Password</label>
+                    <input type="password" id="adminPassword" required class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">Login sebagai Admin</button>
+            </form>
+
+            <!-- Form Client (Validasi Firestore) -->
+            <form id="clientLoginForm" onsubmit="handleClientLogin(event)" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">ID / Username</label>
+                    <input type="text" id="clientId" required class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Password / PIN</label>
+                    <input type="password" id="clientPassword" required class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">Akses Portal Klien</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generic Modal for Forms (Admin CRUD) -->
+    <div id="genericModal" class="fixed inset-0 bg-black bg-opacity-50 z-[110] hidden flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto pt-20 lg:pt-4">
+        <div class="glass rounded-2xl w-full max-w-2xl p-6 lg:p-8 relative my-auto">
+            <button onclick="closeModal('genericModal')" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:text-gray-300"><i class="fas fa-times text-xl"></i></button>
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Form</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-20 lg:top-10 right-4 transform translate-x-full transition-transform duration-300 z-[120] bg-white dark:bg-gray-800 border-l-4 border-blue-500 text-gray-800 dark:text-white shadow-lg rounded px-6 py-4 flex items-center">
+        <i id="toastIcon" class="fas fa-info-circle mr-3 text-blue-500 text-xl"></i>
+        <span id="toastMsg" class="font-medium">Pesan di sini</span>
+    </div>
+
+    <script>
+        // KONFIGURASI WEBSITE
+        const IS_PREVIEW = false; // Set false JIKA SUDAH TERHUBUNG KE FIREBASE
+        const firebaseConfig = {
+  apiKey: "AIzaSyBeQMLmeClPn2y7lmLEkvbgOXJZEfPRN_E",
+  authDomain: "matematikkids-app-b3b9b.firebaseapp.com",
+  projectId: "matematikkids-app-b3b9b",
+  storageBucket: "matematikkids-app-b3b9b.firebasestorage.app",
+  messagingSenderId: "189713927071",
+  appId: "1:189713927071:web:b744242b530c71008d8baa"
+        };
+
+        // State Global
+        let appState = {
+            user: null, // null, 'admin', atau 'client'
+            adminRole: null, // 'superadmin', 'editor'
+            clientData: null,
+            currentPage: 'home',
+            theme: 'light',
+            language: 'id',
+            globalSettings: {},
+            pageSections: [],
+            contentCache: {}
+        };
+
+        // Mock Database untuk Mode Preview
+        let mockDB = {
+            global_settings: {
+                companyName: "Yeswecan Corp",
+                primaryColor: "#2563eb",
+                waNumber: "6281234567890",
+                aboutText: "Kami adalah perusahaan teknologi terkemuka yang fokus pada inovasi digital.",
+                address: "Jl. Sudirman No. 1, Jakarta"
+            },
+            page_builder: [
+                { id: 'hero', visible: true, order: 1, title: 'Inovasi Digital Masa Depan', subtitle: 'Solusi cerdas untuk bisnis Anda.' },
+                { id: 'services', visible: true, order: 2, title: 'Layanan Kami' },
+                { id: 'portfolio', visible: true, order: 3, title: 'Proyek Terbaru' },
+                { id: 'stats', visible: true, order: 4, data: { clients: 150, projects: 320, awards: 15 } },
+                { id: 'team', visible: true, order: 5, title: 'Tim Ahli Kami' },
+                { id: 'testimonials', visible: true, order: 6, title: 'Apa Kata Klien' },
+                { id: 'contact', visible: true, order: 7, title: 'Hubungi Kami' }
+            ],
+            services: [
+                { id: 's1', title: 'Web Development', desc: 'Pembuatan website modern dan responsif.', icon: 'fa-code' },
+                { id: 's2', title: 'Mobile Apps', desc: 'Aplikasi iOS dan Android native/hybrid.', icon: 'fa-mobile-alt' },
+                { id: 's3', title: 'Cloud Solutions', desc: 'Migrasi dan manajemen infrastruktur cloud.', icon: 'fa-cloud' }
+            ],
+            portfolio: [
+                { id: 'p1', title: 'E-Commerce App', category: 'Mobile', img: 'https://placehold.co/600x400/2563eb/ffffff?text=E-Commerce' },
+                { id: 'p2', title: 'Company Profile', category: 'Web', img: 'https://placehold.co/600x400/10b981/ffffff?text=Web+Profile' }
+            ],
+            users: [
+                { id: 'klien1', pin: '1234', role: 'client', name: 'PT Sejahtera', projectStatus: 'Tahap Development 60%' }
+            ],
+            inbox: []
+        };
+
+        let db, auth;
+
+        // Inisialisasi Firebase & PWA
+        function initApp() {
+            setupPWA();
+            if (!IS_PREVIEW) {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                auth = firebase.auth();
+                
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        appState.user = 'admin';
+                        checkAdminRole(user.uid);
+                    } else {
+                        if(appState.user === 'admin') appState.user = null;
+                        renderNavigation();
+                        loadFrontendData();
+                    }
+                });
+            } else {
+                console.log("Menjalankan Mode Preview (Tanpa Firebase)");
+                renderNavigation();
+                applyGlobalSettings(mockDB.global_settings);
+                renderPage('home');
+            }
+        }
+
+        function setupPWA() {
+            // Manifest
+            const manifest = {
+                name: "Yeswecan CMS App",
+                short_name: "YWC App",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#ffffff",
+                theme_color: "#2563eb",
+                icons: [{ src: "https://placehold.co/192x192/2563eb/fff?text=YWC", sizes: "192x192", type: "image/png" },
+                        { src: "https://placehold.co/512x512/2563eb/fff?text=YWC", sizes: "512x512", type: "image/png" }]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
+
+            // Service Worker
+            const swCode = `
+                const CACHE_NAME = 'ywc-cache-v1';
+                self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['/']))); });
+                self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); });
+            `;
+            const swBlob = new Blob([swCode], {type: 'application/javascript'});
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW Reg Failed', err));
+            }
+        }
+
+        async function autoSetupDatabase() {
+            if (IS_PREVIEW) return;
+            showToast('Memeriksa setup database...', 'info');
+            try {
+                const settingsRef = db.collection('global_settings').doc('config');
+                const doc = await settingsRef.get();
+                if (!doc.exists) {
+                    showToast('Menginisialisasi Database Pertama Kali...', 'info');
+                    await settingsRef.set(mockDB.global_settings);
+                    
+                    const batch = db.batch();
+                    mockDB.page_builder.forEach(pb => {
+                        batch.set(db.collection('page_builder').doc(pb.id), pb);
+                    });
+                    mockDB.services.forEach(s => batch.set(db.collection('services').doc(s.id), s));
+                    mockDB.portfolio.forEach(p => batch.set(db.collection('portfolio').doc(p.id), p));
+                    mockDB.users.forEach(u => batch.set(db.collection('users').doc(u.id), u));
+                    await batch.commit();
+                    showToast('Setup Database Berhasil!', 'success');
+                }
+            } catch (error) {
+                console.error("Auto setup error:", error);
+                showToast('Gagal setup database. Cek rule Firebase.', 'error');
+            }
+        }
+
+        async function loadFrontendData() {
+            if (IS_PREVIEW) return;
+            try {
+                const conf = await db.collection('global_settings').doc('config').get();
+                if(conf.exists) {
+                    appState.globalSettings = conf.data();
+                    applyGlobalSettings(appState.globalSettings);
+                } else {
+                    await autoSetupDatabase();
+                    loadFrontendData(); return;
+                }
+                
+                const pb = await db.collection('page_builder').orderBy('order').get();
+                appState.pageSections = pb.docs.map(d => ({id: d.id, ...d.data()}));
+                renderPage('home');
+            } catch (e) {
+                console.error("Gagal load data", e);
+            }
+        }
+
+        function applyGlobalSettings(settings) {
+            document.documentElement.style.setProperty('--primary-color', settings.primaryColor || '#2563eb');
+            document.getElementById('navLogoText').innerText = settings.companyName || 'Company';
+            document.getElementById('mobileLogoText').innerText = settings.companyName || 'Company';
+            
+            if(settings.waNumber) {
+                const wa = document.getElementById('floatingWA');
+                wa.style.display = 'flex';
+                wa.href = `https://wa.me/${settings.waNumber}`;
+            }
+        }
+
+        function showLoginModal() {
+            if (appState.user) { handleLogout(); return; }
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        
+        function switchLoginTab(type) {
+            if(type === 'admin') {
+                document.getElementById('tabAdmin').classList.replace('text-gray-500', 'text-blue-600');
+                document.getElementById('tabAdmin').classList.add('border-b-2', 'border-blue-600');
+                document.getElementById('tabClient').classList.replace('text-blue-600', 'text-gray-500');
+                document.getElementById('tabClient').classList.remove('border-b-2', 'border-blue-600');
+                document.getElementById('adminLoginForm').classList.remove('hidden');
+                document.getElementById('clientLoginForm').classList.add('hidden');
+            } else {
+                document.getElementById('tabClient').classList.replace('text-gray-500', 'text-blue-600');
+                document.getElementById('tabClient').classList.add('border-b-2', 'border-blue-600');
+                document.getElementById('tabAdmin').classList.replace('text-blue-600', 'text-gray-500');
+                document.getElementById('tabAdmin').classList.remove('border-b-2', 'border-blue-600');
+                document.getElementById('clientLoginForm').classList.remove('hidden');
+                document.getElementById('adminLoginForm').classList.add('hidden');
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('adminEmail').value;
+            const pass = document.getElementById('adminPassword').value;
+            if (IS_PREVIEW) {
+                if(email === 'admin@admin.com') {
+                    appState.user = 'admin';
+                    appState.adminRole = 'superadmin';
+                    finalizeLogin('Admin Login Berhasil!');
+                } else showToast('Gagal! Coba admin@admin.com', 'error');
+                return;
+            }
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+                finalizeLogin('Login Admin Berhasil');
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function handleClientLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('clientId').value;
+            const pin = document.getElementById('clientPassword').value;
+            if (IS_PREVIEW) {
+                const user = mockDB.users.find(u => u.id === id && u.pin === pin);
+                if(user) {
+                    appState.user = 'client';
+                    appState.clientData = user;
+                    finalizeLogin('Login Klien Berhasil!');
+                } else showToast('ID atau PIN Salah!', 'error');
+                return;
+            }
+            try {
+                const userDoc = await db.collection('users').doc(id).get();
+                if(userDoc.exists && userDoc.data().pin === pin) {
+                    appState.user = 'client';
+                    appState.clientData = userDoc.data();
+                    finalizeLogin('Login Klien Berhasil!');
+                } else {
+                    showToast('Data tidak cocok!', 'error');
+                }
+            } catch (err) { showToast('Terjadi kesalahan database.', 'error'); }
+        }
+
+        function finalizeLogin(msg) {
+            showToast(msg, 'success');
+            closeModal('loginModal');
+            renderNavigation();
+            if(appState.user === 'admin') renderPage('admin_dashboard');
+            else if(appState.user === 'client') renderPage('client_portal');
+        }
+
+        function handleLogout() {
+            if(!IS_PREVIEW && appState.user === 'admin') auth.signOut();
+            appState.user = null;
+            appState.adminRole = null;
+            appState.clientData = null;
+            renderNavigation();
+            renderPage('home');
+            showToast('Berhasil Logout', 'info');
+        }
+
+        function renderNavigation() {
+            const container = document.getElementById('navLinksContainer');
+            const authBtnTxt = document.getElementById('authButtonText');
+            const roleBadge = document.getElementById('userRoleBadge');
+            
+            let links = [];
+            if (!appState.user) {
+                // Public Menu
+                links = [
+                    { id: 'home', icon: 'fa-home', text: 'Beranda' },
+                    { id: 'about', icon: 'fa-building', text: 'Tentang' },
+                    { id: 'services', icon: 'fa-cogs', text: 'Layanan' },
+                    { id: 'portfolio', icon: 'fa-briefcase', text: 'Portfolio' },
+                    { id: 'contact', icon: 'fa-envelope', text: 'Kontak' }
+                ];
+                authBtnTxt.innerText = "Login Portal";
+                roleBadge.innerText = "Public View";
+                roleBadge.className = "text-xs bg-gray-200 text-gray-700 px-2 rounded-full mt-1";
+            } else if (appState.user === 'admin') {
+                // Admin CMS Menu
+                links = [
+                    { id: 'admin_dashboard', icon: 'fa-tachometer-alt', text: 'Dashboard' },
+                    { id: 'admin_theme', icon: 'fa-paint-brush', text: 'Tema & Global' },
+                    { id: 'admin_builder', icon: 'fa-layer-group', text: 'Page Builder' },
+                    { id: 'admin_content', icon: 'fa-database', text: 'Kelola Konten' },
+                    { id: 'admin_inbox', icon: 'fa-inbox', text: 'Pesan Masuk' }
+                ];
+                authBtnTxt.innerText = "Logout";
+                roleBadge.innerText = "Admin Panel";
+                roleBadge.className = "text-xs bg-blue-600 text-white px-2 rounded-full mt-1";
+            } else if (appState.user === 'client') {
+                // Client Portal Menu
+                links = [
+                    { id: 'client_portal', icon: 'fa-project-diagram', text: 'Status Proyek' },
+                    { id: 'home', icon: 'fa-home', text: 'Ke Beranda Web' }
+                ];
+                authBtnTxt.innerText = "Logout";
+                roleBadge.innerText = "Klien: " + appState.clientData.name;
+                roleBadge.className = "text-xs bg-green-600 text-white px-2 rounded-full mt-1";
+            }
+
+            container.innerHTML = links.map(link => `
+                <button onclick="renderPage('${link.id}')" class="flex flex-col lg:flex-row items-center lg:px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all ${appState.currentPage === link.id ? 'text-blue-600 font-bold bg-blue-50 dark:bg-gray-800' : ''}">
+                    <i class="fas ${link.icon} text-xl lg:text-base lg:w-8 text-center"></i>
+                    <span class="text-xs lg:text-base mt-1 lg:mt-0 font-medium">${link.text}</span>
+                </button>
+            `).join('');
+        }
+
+        async function renderPage(pageId) {
+            appState.currentPage = pageId;
+            renderNavigation(); // Update active state
+            const content = document.getElementById('dynamicContent');
+            content.innerHTML = '<div class="flex justify-center items-center h-screen"><i class="fas fa-spinner fa-spin text-4xl text-blue-600"></i></div>';
+            
+            let html = '';
+            
+            if (pageId === 'home' || pageId === 'about' || pageId === 'services' || pageId === 'portfolio' || pageId === 'contact') {
+                html = await buildFrontendPage();
+            } else if (pageId.startsWith('admin_') && appState.user === 'admin') {
+                html = buildAdminPage(pageId);
+            } else if (pageId === 'client_portal' && appState.user === 'client') {
+                html = buildClientPage();
+            } else {
+                html = '<div class="section-padding text-center"><h2 class="text-2xl text-red-500">Akses Ditolak / Halaman Tidak Ditemukan</h2></div>';
+            }
+            
+            content.innerHTML = `<div class="fade-in">${html}</div>`;
+            if(pageId === 'admin_content') loadAdminContent('services'); // default tab
+            if(pageId === 'admin_builder') renderBuilderList();
+            if(pageId === 'admin_inbox') loadInbox();
+        }
+
+        async function buildFrontendPage() {
+            let sections = IS_PREVIEW ? mockDB.page_builder : appState.pageSections;
+            if(!sections || sections.length === 0) return '<div class="p-10 text-center">Data kosong. Admin harap setup database.</div>';
+            
+            sections = sections.filter(s => s.visible).sort((a,b) => a.order - b.order);
+            let html = '';
+            
+            for(const sec of sections) {
+                switch(sec.id) {
+                    case 'hero':
+                        html += `
+                        <section class="min-h-[80vh] flex items-center justify-center text-center section-padding relative overflow-hidden">
+                            <div class="glass p-10 md:p-16 rounded-3xl z-10 max-w-4xl mx-auto shadow-2xl">
+                                <h1 class="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">${sec.title}</h1>
+                                <p class="text-lg md:text-2xl text-gray-600 dark:text-gray-300 mb-10">${sec.subtitle}</p>
+                                <button onclick="renderPage('contact')" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full font-bold shadow-lg transition-transform transform hover:scale-105">Konsultasi Gratis</button>
+                            </div>
+                            <!-- Dekorasi BG -->
+                            <div class="absolute top-20 left-10 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob"></div>
+                            <div class="absolute bottom-20 right-10 w-32 h-32 bg-purple-400 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000"></div>
+                        </section>`;
+                        break;
+                    case 'services':
+                        let srvData = IS_PREVIEW ? mockDB.services : await fetchCollection('services');
+                        html += `
+                        <section class="section-padding">
+                            <div class="max-w-6xl mx-auto">
+                                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-white">${sec.title}</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    ${srvData.map(s => `
+                                    <div class="glass p-8 rounded-2xl hover:-translate-y-2 transition-transform cursor-pointer group">
+                                        <div class="w-16 h-16 bg-blue-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors">
+                                            <i class="fas ${s.icon || 'fa-cog'} text-3xl text-blue-600 group-hover:text-white"></i>
+                                        </div>
+                                        <h3 class="text-xl font-bold mb-3 text-gray-800 dark:text-white">${s.title}</h3>
+                                        <p class="text-gray-600 dark:text-gray-300">${s.desc}</p>
+                                    </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </section>`;
+                        break;
+                    case 'portfolio':
+                        let portData = IS_PREVIEW ? mockDB.portfolio : await fetchCollection('portfolio');
+                        html += `
+                        <section class="section-padding bg-black/5 dark:bg-white/5">
+                            <div class="max-w-6xl mx-auto">
+                                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-white">${sec.title}</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    ${portData.map(p => `
+                                    <div class="glass rounded-2xl overflow-hidden group relative">
+                                        <img src="${p.img}" alt="${p.title}" class="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-500">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span class="text-blue-400 text-sm font-bold mb-1">${p.category}</span>
+                                            <h3 class="text-white text-xl font-bold">${p.title}</h3>
+                                        </div>
+                                    </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </section>`;
+                        break;
+                    case 'stats':
+                        let st = sec.data || {clients:0, projects:0, awards:0};
+                        html += `
+                        <section class="py-16 bg-blue-600 text-white">
+                            <div class="max-w-6xl mx-auto grid grid-cols-3 gap-4 text-center">
+                                <div><div class="text-4xl lg:text-5xl font-bold mb-2">${st.clients}+</div><div class="text-blue-200">Klien Aktif</div></div>
+                                <div><div class="text-4xl lg:text-5xl font-bold mb-2">${st.projects}+</div><div class="text-blue-200">Proyek Selesai</div></div>
+                                <div><div class="text-4xl lg:text-5xl font-bold mb-2">${st.awards}</div><div class="text-blue-200">Penghargaan</div></div>
+                            </div>
+                        </section>`;
+                        break;
+                    case 'contact':
+                        html += `
+                        <section class="section-padding max-w-4xl mx-auto">
+                            <div class="glass p-8 md:p-12 rounded-3xl">
+                                <h2 class="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">${sec.title}</h2>
+                                <form onsubmit="submitContact(event)" class="space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <input type="text" id="cName" required placeholder="Nama Lengkap" class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-500">
+                                        <input type="email" id="cEmail" required placeholder="Email" class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <textarea id="cMsg" required placeholder="Pesan Anda..." rows="4" class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-colors">Kirim Pesan</button>
+                                </form>
+                            </div>
+                        </section>`;
+                        break;
+                }
+            }
+            // Footer
+            const gs = IS_PREVIEW ? mockDB.global_settings : appState.globalSettings;
+            html += `
+            <footer class="bg-gray-900 text-white pt-16 pb-24 lg:pb-8">
+                <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    <div><h3 class="text-2xl font-bold mb-4">${gs.companyName || 'Company'}</h3><p class="text-gray-400">${gs.aboutText || 'Your trusted partner.'}</p></div>
+                    <div><h4 class="text-lg font-bold mb-4">Link Cepat</h4><ul class="space-y-2 text-gray-400"><li><button onclick="renderPage('home')">Beranda</button></li><li><button onclick="renderPage('services')">Layanan</button></li></ul></div>
+                    <div><h4 class="text-lg font-bold mb-4">Kontak</h4><p class="text-gray-400 mb-2"><i class="fas fa-map-marker-alt mr-2"></i>${gs.address || 'Kantor Pusat'}</p><p class="text-gray-400"><i class="fab fa-whatsapp mr-2"></i>${gs.waNumber || '-'}</p></div>
+                </div>
+                <div class="text-center text-gray-500 text-sm border-t border-gray-800 pt-8">&copy; ${new Date().getFullYear()} ${gs.companyName}. Hak cipta dilindungi.</div>
+            </footer>`;
+            return html;
+        }
+
+        async function submitContact(e) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('cName').value,
+                email: document.getElementById('cEmail').value,
+                message: document.getElementById('cMsg').value,
+                date: new Date().toISOString(),
+                status: 'unread'
+            };
+            if(IS_PREVIEW) {
+                mockDB.inbox.push(data);
+                showToast('Pesan terkirim (Preview)', 'success');
+                e.target.reset(); return;
+            }
+            try {
+                await db.collection('inbox').add(data);
+                showToast('Pesan berhasil dikirim!', 'success');
+                e.target.reset();
+            } catch (err) { showToast('Gagal mengirim pesan', 'error'); }
+        }
+
+        function buildAdminPage(pageId) {
+            let html = '<div class="p-6 lg:p-10 max-w-7xl mx-auto">';
+            
+            if (pageId === 'admin_dashboard') {
+                html += `
+                <h2 class="text-3xl font-bold mb-8 text-gray-800 dark:text-white">Admin Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="glass p-6 rounded-2xl flex items-center justify-between"><div class="text-gray-800 dark:text-white"><p class="text-sm">Total Inbox</p><p class="text-3xl font-bold">12</p></div><i class="fas fa-envelope text-4xl text-blue-500 opacity-50"></i></div>
+                    <div class="glass p-6 rounded-2xl flex items-center justify-between"><div class="text-gray-800 dark:text-white"><p class="text-sm">Total Klien</p><p class="text-3xl font-bold">5</p></div><i class="fas fa-users text-4xl text-green-500 opacity-50"></i></div>
+                    <div class="glass p-6 rounded-2xl flex items-center justify-between"><div class="text-gray-800 dark:text-white"><p class="text-sm">Visitor Bantuan</p><p class="text-3xl font-bold">Analytics</p></div><i class="fas fa-chart-line text-4xl text-purple-500 opacity-50"></i></div>
+                </div>
+                <div class="glass p-8 rounded-2xl">
+                    <h3 class="text-xl font-bold mb-4">Selamat Datang di Panel CMS!</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Gunakan menu di samping untuk mengubah tema, mengatur struktur halaman, menambah portofolio, dan membalas pesan.</p>
+                </div>`;
+            }
+            else if (pageId === 'admin_theme') {
+                const gs = IS_PREVIEW ? mockDB.global_settings : appState.globalSettings;
+                html += `
+                <h2 class="text-3xl font-bold mb-8 text-gray-800 dark:text-white">Pengaturan Global & Tema</h2>
+                <div class="glass p-8 rounded-2xl">
+                    <form onsubmit="saveGlobalSettings(event)" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label class="block mb-2 font-medium">Nama Perusahaan</label><input type="text" id="ts_name" value="${gs.companyName||''}" class="w-full p-3 rounded-lg border bg-white/50"></div>
+                            <div><label class="block mb-2 font-medium">Warna Primer</label><input type="color" id="ts_color" value="${gs.primaryColor||'#2563eb'}" class="w-full p-1 rounded-lg h-12"></div>
+                            <div><label class="block mb-2 font-medium">Nomor WhatsApp</label><input type="text" id="ts_wa" value="${gs.waNumber||''}" class="w-full p-3 rounded-lg border bg-white/50"></div>
+                            <div><label class="block mb-2 font-medium">Alamat Footer</label><input type="text" id="ts_addr" value="${gs.address||''}" class="w-full p-3 rounded-lg border bg-white/50"></div>
+                        </div>
+                        <div><label class="block mb-2 font-medium">Teks Tentang (Singkat)</label><textarea id="ts_about" rows="3" class="w-full p-3 rounded-lg border bg-white/50">${gs.aboutText||''}</textarea></div>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold">Simpan Pengaturan</button>
+                    </form>
+                </div>`;
+            }
+            else if (pageId === 'admin_builder') {
+                html += `
+                <h2 class="text-3xl font-bold mb-4 text-gray-800 dark:text-white">Page Builder</h2>
+                <p class="mb-6 text-gray-600">Geser urutan (Up/Down) atau sembunyikan section di halaman depan.</p>
+                <div id="builderList" class="space-y-3"></div>`;
+            }
+            else if (pageId === 'admin_content') {
+                html += `
+                <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Kelola Konten</h2>
+                <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+                    <button onclick="loadAdminContent('services')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium whitespace-nowrap">Layanan</button>
+                    <button onclick="loadAdminContent('portfolio')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium whitespace-nowrap">Portfolio</button>
+                    <button onclick="loadAdminContent('users')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium whitespace-nowrap">Akun Klien (Portal)</button>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 id="contentTitle" class="text-xl font-bold capitalize">Konten</h3>
+                        <button onclick="openFormModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-2"></i>Tambah Data</button>
+                    </div>
+                    <div class="overflow-x-auto"><table class="w-full text-left border-collapse" id="contentTable"></table></div>
+                </div>`;
+            }
+            else if (pageId === 'admin_inbox') {
+                html += `
+                <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Pesan Masuk (Inbox)</h2>
+                <div class="glass p-6 rounded-2xl">
+                    <div id="inboxList" class="space-y-4"></div>
+                </div>`;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        async function saveGlobalSettings(e) {
+            e.preventDefault();
+            const data = {
+                companyName: document.getElementById('ts_name').value,
+                primaryColor: document.getElementById('ts_color').value,
+                waNumber: document.getElementById('ts_wa').value,
+                address: document.getElementById('ts_addr').value,
+                aboutText: document.getElementById('ts_about').value
+            };
+            if(IS_PREVIEW) {
+                mockDB.global_settings = data;
+                applyGlobalSettings(data);
+                showToast('Pengaturan Disimpan (Preview)', 'success');
+                return;
+            }
+            try {
+                await db.collection('global_settings').doc('config').set(data, {merge: true});
+                appState.globalSettings = {...appState.globalSettings, ...data};
+                applyGlobalSettings(appState.globalSettings);
+                showToast('Pengaturan Global Berhasil Disimpan', 'success');
+            } catch (err) { showToast('Gagal simpan', 'error'); }
+        }
+
+        function renderBuilderList() {
+            const list = IS_PREVIEW ? mockDB.page_builder : appState.pageSections;
+            list.sort((a,b) => a.order - b.order);
+            
+            document.getElementById('builderList').innerHTML = list.map((sec, index) => `
+                <div class="glass p-4 rounded-xl flex items-center justify-between border-l-4 ${sec.visible ? 'border-green-500' : 'border-gray-400'}">
+                    <div class="flex items-center">
+                        <span class="font-bold w-32 uppercase text-sm">${sec.id}</span>
+                        <span class="text-gray-500 text-sm hidden md:inline ml-4">${sec.title || 'Section Dinamis'}</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="toggleVisibility('${sec.id}', ${!sec.visible})" class="p-2 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300" title="Tampil/Sembunyi">
+                            <i class="fas ${sec.visible ? 'fa-eye text-green-600' : 'fa-eye-slash text-gray-500'}"></i>
+                        </button>
+                        <button onclick="moveSection('${sec.id}', -1)" ${index === 0 ? 'disabled' : ''} class="p-2 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 disabled:opacity-50"><i class="fas fa-arrow-up"></i></button>
+                        <button onclick="moveSection('${sec.id}', 1)" ${index === list.length-1 ? 'disabled' : ''} class="p-2 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 disabled:opacity-50"><i class="fas fa-arrow-down"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleVisibility(id, state) {
+            if(IS_PREVIEW) {
+                mockDB.page_builder.find(s => s.id === id).visible = state;
+                renderBuilderList(); return;
+            }
+            await db.collection('page_builder').doc(id).update({visible: state});
+            appState.pageSections.find(s => s.id === id).visible = state;
+            renderBuilderList();
+        }
+        
+        async function moveSection(id, dir) {
+            let list = IS_PREVIEW ? mockDB.page_builder : appState.pageSections;
+            list.sort((a,b) => a.order - b.order);
+            let idx = list.findIndex(s => s.id === id);
+            if(idx < 0 || (idx === 0 && dir === -1) || (idx === list.length-1 && dir === 1)) return;
+            
+            // Swap order
+            let temp = list[idx].order;
+            list[idx].order = list[idx+dir].order;
+            list[idx+dir].order = temp;
+            
+            if(IS_PREVIEW) { renderBuilderList(); return; }
+            
+            const batch = db.batch();
+            batch.update(db.collection('page_builder').doc(list[idx].id), {order: list[idx].order});
+            batch.update(db.collection('page_builder').doc(list[idx+dir].id), {order: list[idx+dir].order});
+            await batch.commit();
+            renderBuilderList();
+        }
+
+        let currentCollection = 'services';
+        const collectionSchemas = {
+            services: { title: 'Layanan', cols: ['title', 'desc', 'icon'], form: [{id:'title', label:'Nama Layanan'}, {id:'desc', label:'Deskripsi', type:'textarea'}, {id:'icon', label:'Class Icon (ex: fa-code)'}] },
+            portfolio: { title: 'Portfolio', cols: ['title', 'category', 'img'], form: [{id:'title', label:'Judul Proyek'}, {id:'category', label:'Kategori'}, {id:'img', label:'URL Gambar'}] },
+            users: { title: 'Akun Klien', cols: ['id', 'name', 'pin', 'projectStatus'], form: [{id:'id', label:'ID Login (Unik)'}, {id:'name', label:'Nama Klien'}, {id:'pin', label:'PIN/Password'}, {id:'projectStatus', label:'Status Proyek', type:'textarea'}] }
+        };
+
+        async function fetchCollection(col) {
+            if(IS_PREVIEW) return mockDB[col] || [];
+            const snapshot = await db.collection(col).get();
+            return snapshot.docs.map(d => ({...d.data(), _docId: d.id}));
+        }
+
+        async function loadAdminContent(col) {
+            currentCollection = col;
+            document.getElementById('contentTitle').innerText = collectionSchemas[col].title;
+            const data = await fetchCollection(col);
+            
+            const table = document.getElementById('contentTable');
+            const schema = collectionSchemas[col];
+            
+            let html = `<thead><tr class="border-b border-gray-300 dark:border-gray-700">`;
+            schema.cols.forEach(c => html += `<th class="p-3 uppercase text-xs text-gray-500">${c}</th>`);
+            html += `<th class="p-3 text-right">Aksi</th></tr></thead><tbody>`;
+            
+            data.forEach(row => {
+                html += `<tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-black/5 dark:hover:bg-white/5">`;
+                schema.cols.forEach(c => html += `<td class="p-3 text-sm truncate max-w-[150px]">${row[c] || '-'}</td>`);
+                html += `<td class="p-3 text-right">
+                    <button onclick='deleteRecord("${col}", "${row._docId || row.id}")' class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                </td></tr>`;
+            });
+            html += `</tbody>`;
+            table.innerHTML = html;
+        }
+
+        function openFormModal() {
+            const schema = collectionSchemas[currentCollection];
+            document.getElementById('modalTitle').innerText = `Tambah ${schema.title}`;
+            let formHtml = `<form onsubmit="saveRecord(event)" class="space-y-4">`;
+            
+            schema.form.forEach(f => {
+                if(f.type === 'textarea') {
+                    formHtml += `<div><label class="block text-sm mb-1">${f.label}</label><textarea id="form_${f.id}" required class="w-full p-2 border rounded-lg bg-white/50" rows="3"></textarea></div>`;
+                } else {
+                    formHtml += `<div><label class="block text-sm mb-1">${f.label}</label><input type="text" id="form_${f.id}" required class="w-full p-2 border rounded-lg bg-white/50"></div>`;
+                }
+            });
+            formHtml += `<div class="pt-4"><button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold">Simpan Data</button></div></form>`;
+            
+            document.getElementById('modalContent').innerHTML = formHtml;
+            document.getElementById('genericModal').classList.remove('hidden');
+        }
+
+        async function saveRecord(e) {
+            e.preventDefault();
+            const schema = collectionSchemas[currentCollection];
+            let data = {};
+            schema.form.forEach(f => data[f.id] = document.getElementById(`form_${f.id}`).value);
+            
+            // For custom ID (like users)
+            let docId = data.id || 'doc_' + Date.now();
+            if(currentCollection !== 'users') data.id = docId;
+
+            if(IS_PREVIEW) {
+                mockDB[currentCollection].push(data);
+                closeModal('genericModal');
+                loadAdminContent(currentCollection);
+                showToast('Tersimpan (Preview)', 'success');
+                return;
+            }
+            try {
+                await db.collection(currentCollection).doc(docId).set(data);
+                closeModal('genericModal');
+                loadAdminContent(currentCollection);
+                showToast('Data berhasil ditambahkan', 'success');
+            } catch (err) { showToast('Gagal menyimpan', 'error'); }
+        }
+
+        async function deleteRecord(col, id) {
+            if(!confirm("Yakin ingin menghapus?")) return;
+            if(IS_PREVIEW) {
+                mockDB[col] = mockDB[col].filter(x => (x._docId || x.id) !== id);
+                loadAdminContent(col);
+                return;
+            }
+            try {
+                await db.collection(col).doc(id).delete();
+                loadAdminContent(col);
+                showToast('Data dihapus', 'info');
+            } catch (err) { showToast('Gagal hapus', 'error'); }
+        }
+
+        async function loadInbox() {
+            let msgs = IS_PREVIEW ? mockDB.inbox : await fetchCollection('inbox');
+            msgs.sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            const container = document.getElementById('inboxList');
+            if(msgs.length === 0) { container.innerHTML = '<p class="text-gray-500">Belum ada pesan.</p>'; return; }
+            
+            container.innerHTML = msgs.map(m => `
+                <div class="border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-white/30 dark:bg-black/20">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-bold text-lg">${m.name} <span class="text-xs font-normal text-gray-500 ml-2">&lt;${m.email}&gt;</span></div>
+                        <div class="text-xs text-gray-400">${new Date(m.date).toLocaleString()}</div>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">${m.message}</p>
+                </div>
+            `).join('');
+        }
+
+        function buildClientPage() {
+            const data = appState.clientData;
+            return `
+            <div class="p-6 lg:p-10 max-w-4xl mx-auto mt-10">
+                <div class="glass p-8 md:p-12 rounded-3xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+                    <h2 class="text-3xl font-bold mb-2">Portal Klien Rahasia</h2>
+                    <p class="text-gray-500 mb-8">Selamat datang, <span class="font-bold text-gray-800 dark:text-white">${data.name}</span></p>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 p-6 rounded-2xl mb-6">
+                        <h3 class="text-xl font-bold mb-4 text-blue-800 dark:text-blue-300"><i class="fas fa-clipboard-check mr-2"></i>Status Proyek Saat Ini</h3>
+                        <p class="text-gray-700 dark:text-gray-200 text-lg font-medium whitespace-pre-line">${data.projectStatus}</p>
+                    </div>
+                    
+                    <button onclick="renderPage('contact')" class="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-black transition-colors"><i class="fas fa-headset mr-2"></i>Hubungi Tim Dukungan</button>
+                </div>
+            </div>`;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            appState.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            
+            const icon = document.getElementById('toastIcon');
+            icon.className = `fas mr-3 text-xl ${type === 'success' ? 'fa-check-circle text-green-500' : type === 'error' ? 'fa-times-circle text-red-500' : 'fa-info-circle text-blue-500'}`;
+            toast.className = `fixed top-20 lg:top-10 right-4 transform transition-transform duration-300 z-[120] bg-white dark:bg-gray-800 border-l-4 text-gray-800 dark:text-white shadow-lg rounded px-6 py-4 flex items-center ${type === 'success' ? 'border-green-500' : type === 'error' ? 'border-red-500' : 'border-blue-500'}`;
+            
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), 3000);
+        }
+
+        // Jalankan saat dokumen dimuat
+        window.onload = () => {
+            initApp();
+            
+            // Cek system preference untuk dark mode
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                toggleTheme();
+            }
+        };
+    </script>
+</body>
+</html>
