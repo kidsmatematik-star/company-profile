@@ -265,10 +265,27 @@
                 db = firebase.firestore();
                 auth = firebase.auth();
                 
-                auth.onAuthStateChanged(user => {
+                auth.onAuthStateChanged(async user => {
                     if (user) {
                         appState.user = 'admin';
-                        checkAdminRole(user.uid);
+                        appState.adminRole = 'superadmin';
+                        
+                        // Setup Database otomatis HANYA ketika Admin berhasil login
+                        await autoSetupDatabase();
+                        
+                        // Load data agar preview frontend di dashboard bisa digunakan
+                        try {
+                            const conf = await db.collection('global_settings').doc('config').get();
+                            if(conf.exists) {
+                                appState.globalSettings = conf.data();
+                                applyGlobalSettings(appState.globalSettings);
+                            }
+                            const pb = await db.collection('page_builder').orderBy('order').get();
+                            appState.pageSections = pb.docs.map(d => ({id: d.id, ...d.data()}));
+                        } catch(e) { console.error("Admin DB load error:", e); }
+                        
+                        renderNavigation();
+                        renderPage('admin_dashboard');
                     } else {
                         if(appState.user === 'admin') appState.user = null;
                         renderNavigation();
@@ -343,16 +360,27 @@
                 if(conf.exists) {
                     appState.globalSettings = conf.data();
                     applyGlobalSettings(appState.globalSettings);
+                    
+                    const pb = await db.collection('page_builder').orderBy('order').get();
+                    appState.pageSections = pb.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderPage('home');
                 } else {
-                    await autoSetupDatabase();
-                    loadFrontendData(); return;
+                    // Jika DB kosong, tampilkan layar peringatan untuk Login
+                    const content = document.getElementById('dynamicContent');
+                    content.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 fade-in">
+                            <i class="fas fa-database text-6xl text-gray-300 mb-6"></i>
+                            <h2 class="text-2xl font-bold text-gray-700 dark:text-white">Website Belum Dikonfigurasi</h2>
+                            <p class="text-gray-500 mt-2 mb-8 max-w-md">Database Firebase saat ini masih kosong. Karena aturan keamanan, inisialisasi awal hanya bisa dilakukan oleh Super Admin.</p>
+                            <button onclick="showLoginModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-transform transform hover:scale-105 shadow-lg">
+                                <i class="fas fa-sign-in-alt mr-2"></i> Login Super Admin untuk Setup
+                            </button>
+                        </div>
+                    `;
                 }
-                
-                const pb = await db.collection('page_builder').orderBy('order').get();
-                appState.pageSections = pb.docs.map(d => ({id: d.id, ...d.data()}));
-                renderPage('home');
             } catch (e) {
                 console.error("Gagal load data", e);
+                document.getElementById('dynamicContent').innerHTML = '<div class="p-10 text-center text-red-500">Terjadi kesalahan koneksi ke database. Pastikan Rules Firebase sudah benar.</div>';
             }
         }
 
@@ -405,8 +433,11 @@
                 return;
             }
             try {
+                showToast('Memeriksa kredensial...', 'info');
                 await auth.signInWithEmailAndPassword(email, pass);
-                finalizeLogin('Login Admin Berhasil');
+                showToast('Login Admin Berhasil!', 'success');
+                closeModal('loginModal');
+                // Proses render dan setup database akan otomatis dilanjutkan oleh onAuthStateChanged di initApp()
             } catch (err) { showToast(err.message, 'error'); }
         }
 
